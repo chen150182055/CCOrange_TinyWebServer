@@ -1,7 +1,7 @@
 #include "config.h"
 
 /**
- * 构造函数
+ * @brief 构造函数
  */
 Config::Config() {
     //端口号,默认9006
@@ -36,7 +36,7 @@ Config::Config() {
 }
 
 /**
- * 处理输入参数
+ * @brief 处理输入参数
  * @param argc
  * @param argv
  */

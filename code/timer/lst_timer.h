@@ -48,7 +48,7 @@ public:     //公有成员
     util_timer *next;
 };
 
-//sort_timer_lst类
+//定时器链表类，用于管理服务器所有连接对应的定时器
 class sort_timer_lst {
 public:     //公有成员
     sort_timer_lst();   //构造函数声明
@@ -66,8 +66,8 @@ public:     //公有成员
 private:    //私有成员
     void add_timer(util_timer *timer, util_timer *lst_head);
 
-    util_timer *head;
-    util_timer *tail;
+    util_timer *head;   //链表的头指针
+    util_timer *tail;   //链表的尾指针
 };
 
 //Utils类
@@ -96,13 +96,13 @@ public:     //公有成员
 
     void show_error(int connfd, const char *info);
 
-public:     //公有成员
-    static int *u_pipefd;
-    sort_timer_lst m_timer_lst;
-    static int u_epollfd;
-    int m_TIMESLOT;
+public:
+    static int *u_pipefd;       //管道文件描述符指针
+    sort_timer_lst m_timer_lst; //定时器链表
+    static int u_epollfd;       //表示 Utils 类中的所有对象共享同一个 epoll 文件描述符
+    int m_TIMESLOT;             //表示定时器的最小时间间隔
 };
 
-void cb_func(client_data *user_data);   //非成员函数
+void cb_func(client_data *user_data);   //回调函数
 
 #endif

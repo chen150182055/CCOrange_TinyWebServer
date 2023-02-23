@@ -30,10 +30,11 @@
 //http_conn类
 class http_conn {
 public:     //公有成员
-    static const int FILENAME_LEN = 200;
-    static const int READ_BUFFER_SIZE = 2048;
-    static const int WRITE_BUFFER_SIZE = 1024;
+    static const int FILENAME_LEN = 200;        //表示文件名的最大长度
+    static const int READ_BUFFER_SIZE = 2048;   //表示读缓冲区的大小
+    static const int WRITE_BUFFER_SIZE = 1024;  //表示写缓冲区的大小
 
+    //定义了HTTP请求的方法，包括GET、POST、HEAD、PUT、DELETE、TRACE、OPTIONS、CONNECT和PATH
     enum METHOD {
         GET = 0,
         POST,
@@ -46,12 +47,14 @@ public:     //公有成员
         PATH
     };
 
+    //定义了解析HTTP请求的状态，分别表示正在分析请求行、请求头、请求体
     enum CHECK_STATE {
         CHECK_STATE_REQUESTLINE = 0,
         CHECK_STATE_HEADER,
         CHECK_STATE_CONTENT
     };
 
+    //定义了HTTP请求的返回状态码
     enum HTTP_CODE {
         NO_REQUEST,
         GET_REQUEST,
@@ -63,10 +66,11 @@ public:     //公有成员
         CLOSED_CONNECTION
     };
 
+    //定义了解析行的状态
     enum LINE_STATUS {
-        LINE_OK = 0,
-        LINE_BAD,
-        LINE_OPEN
+        LINE_OK = 0,    //解析成功
+        LINE_BAD,       //行出现语法错误
+        LINE_OPEN       //行数据尚不完整
     };
 
 public:     //私有成员
@@ -133,45 +137,45 @@ private:    //私有成员
     bool add_blank_line();
 
 public:     //公有成员
-    static int m_epollfd;
-    static int m_user_count;
-    MYSQL *mysql;
-    int m_state;  //读为0, 写为1
+    static int m_epollfd;       //表示当前类所对应的 epollfd 文件描述符
+    static int m_user_count;    //表示当前连接的客户数量
+    MYSQL *mysql;               //表示 MySQL 数据库连接句柄
+    int m_state;                //表示当前连接的状态，0 表示读，1 表示写
 
 private:    //私有成员
-    int m_sockfd;
-    sockaddr_in m_address;
-    char m_read_buf[READ_BUFFER_SIZE];
-    int m_read_idx;
-    int m_checked_idx;
-    int m_start_line;
-    char m_write_buf[WRITE_BUFFER_SIZE];
-    int m_write_idx;
-    CHECK_STATE m_check_state;
-    METHOD m_method;
-    char m_real_file[FILENAME_LEN];
-    char *m_url;
-    char *m_version;
-    char *m_host;
-    int m_content_length;
-    bool m_linger;
-    char *m_file_address;
-    struct stat m_file_stat;
-    struct iovec m_iv[2];
-    int m_iv_count;
-    int cgi;        //是否启用的POST
-    char *m_string; //存储请求头数据
-    int bytes_to_send;
-    int bytes_have_send;
-    char *doc_root;
+    int m_sockfd;           //表示连接的套接字描述符
+    sockaddr_in m_address;  //表示连接的客户端地址
+    char m_read_buf[READ_BUFFER_SIZE];  //表示读缓冲区
+    int m_read_idx;         //表示当前读缓冲区中数据的末尾位置
+    int m_checked_idx;      //表示当前正在分析的字符在读缓冲区中的位置
+    int m_start_line;       //表示当前正在分析的行的起始位置
+    char m_write_buf[WRITE_BUFFER_SIZE];//表示写缓冲区
+    int m_write_idx;        //表示当前写缓冲区中待发送的字节数
+    CHECK_STATE m_check_state;          //表示当前的解析状态
+    METHOD m_method;        //表示当前请求的方法类型
+    char m_real_file[FILENAME_LEN];     //表示请求的文件在服务器上的真实路径
+    char *m_url;            //表示请求的 URL
+    char *m_version;        //表示 HTTP 版本
+    char *m_host;           //表示请求的主机地址
+    int m_content_length;   //表示请求消息体的长度
+    bool m_linger;          //表示是否保持连接
+    char *m_file_address;   //表示请求的文件在内存中的起始位置
+    struct stat m_file_stat;//表示请求文件的状态
+    struct iovec m_iv[2];   //表示写缓冲区中待发送的数据
+    int m_iv_count;         //表示写缓冲区中待发送的数据数量
+    int cgi;                //是否启用的POST
+    char *m_string;         //存储请求头数据
+    int bytes_to_send;      //表示待发送的字节数
+    int bytes_have_send;    //表示已发送的字节数
+    char *doc_root;         //表示服务器的根目录
 
-    map <string, string> m_users;
-    int m_TRIGMode;
-    int m_close_log;
+    map <string, string> m_users;       //表示用户列表
+    int m_TRIGMode;         //表示触发模式
+    int m_close_log;        //表示是否关闭日志
 
-    char sql_user[100];
-    char sql_passwd[100];
-    char sql_name[100];
+    char sql_user[100];     //表示数据库用户名
+    char sql_passwd[100];   //表示数据库密码
+    char sql_name[100];     //表示数据库名
 };
 
 #endif

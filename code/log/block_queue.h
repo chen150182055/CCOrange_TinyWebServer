@@ -20,7 +20,7 @@ class block_queue {
 public:     //公有成员
 
     /**
-     * 构造函数
+     * @brief 构造函数
      * @param max_size
      */
     block_queue(int max_size = 1000) {
@@ -36,7 +36,7 @@ public:     //公有成员
     }
 
     /**
-     *
+     * @brief
      */
     void clear() {
         m_mutex.lock();
@@ -47,7 +47,7 @@ public:     //公有成员
     }
 
     /**
-     * 析构函数
+     * @brief 析构函数
      */
     ~block_queue() {
         m_mutex.lock();
@@ -58,7 +58,7 @@ public:     //公有成员
     }
 
     /**
-     * 判断队列是否满了
+     * @brief 判断队列是否满了
      * @return
      */
     bool full() {
@@ -73,7 +73,7 @@ public:     //公有成员
     }
 
     /**
-     * 判断队列是否为空
+     * @brief 判断队列是否为空
      * @return
      */
     bool empty() {
@@ -87,7 +87,7 @@ public:     //公有成员
     }
 
     /**
-     * 返回队首元素
+     * @brief 返回队首元素
      * @param value
      * @return
      */
@@ -103,7 +103,7 @@ public:     //公有成员
     }
 
     /**
-     * 返回队尾元素
+     * @brief 返回队尾元素
      * @param value
      * @return
      */
@@ -119,7 +119,7 @@ public:     //公有成员
     }
 
     /**
-     *
+     * @brief
      * @return
      */
     int size() {
@@ -133,7 +133,7 @@ public:     //公有成员
     }
 
     /**
-     *
+     * @brief
      * @return
      */
     int max_size() {
@@ -147,7 +147,7 @@ public:     //公有成员
     }
 
     /**
-     * 往队列添加元素，需要将所有使用队列的线程先唤醒
+     * @brief 往队列添加元素，需要将所有使用队列的线程先唤醒
      * 当有元素push进队列,相当于生产者生产了一个元素
      * 若当前没有线程等待条件变量,则唤醒无意义
      * @param item
@@ -174,7 +174,7 @@ public:     //公有成员
     }
 
     /**
-     * pop时,如果当前队列没有元素,将会等待条件变量
+     * @brief pop时,如果当前队列没有元素,将会等待条件变量
      * @param item
      * @return
      */
@@ -197,7 +197,7 @@ public:     //公有成员
     }
 
     /**
-     * 增加了超时处理
+     * @brief 增加了超时处理
      * @param item
      * @param ms_timeout
      * @return

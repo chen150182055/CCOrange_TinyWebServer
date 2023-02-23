@@ -10,12 +10,12 @@
 
 using namespace std;
 
-//Log类
+//Log类,实现日志记录功能
 class Log {
 public:     //公有成员
 
     /**
-     * C++11以后,使用局部变量懒汉不用加锁
+     * @brief 返回唯一的Log实例，使用单例模式
      * @return
      */
     static Log *get_instance() {
@@ -24,7 +24,7 @@ public:     //公有成员
     }
 
     /**
-     *
+     * @brief
      * @param args
      * @return
      */
@@ -32,15 +32,6 @@ public:     //公有成员
         Log::get_instance()->async_write_log();
     }
 
-    /**
-     * 可选择的参数有日志文件、日志缓冲区大小、最大行数以及最长日志条队列
-     * @param file_name
-     * @param close_log
-     * @param log_buf_size
-     * @param split_lines
-     * @param max_queue_size
-     * @return
-     */
     bool init(const char *file_name, int close_log, int log_buf_size = 8192, int split_lines = 5000000,int max_queue_size = 0);
 
     void write_log(int level, const char *format, ...);
@@ -53,7 +44,7 @@ private:    //私有成员
     virtual ~Log(); //析构函数声明
 
     /**
-     *
+     * @brief 步写日志，通过阻塞队列实现
      * @return
      */
     void *async_write_log() {

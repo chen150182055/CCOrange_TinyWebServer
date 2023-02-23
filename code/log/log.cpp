@@ -8,7 +8,7 @@
 using namespace std;
 
 /**
- * 构造函数
+ * @brief 构造函数
  */
 Log::Log() {
     m_count = 0;
@@ -16,7 +16,7 @@ Log::Log() {
 }
 
 /**
- * 析构函数
+ * @brief 析构函数
  */
 Log::~Log() {
     if (m_fp != NULL) {
@@ -26,7 +26,7 @@ Log::~Log() {
 
 //异步需要设置阻塞队列的长度，同步不需要设置
 /**
- * 初始化
+ * @brief 初始化
  * @param file_name
  * @param close_log
  * @param log_buf_size
@@ -79,18 +79,21 @@ bool Log::init(const char *file_name, int close_log, int log_buf_size, int split
 }
 
 /**
- * 写日志
- * @param level 日志等级
- * @param format 日志格式
+ * @brief 写日志
+ * @param level 整型的日志级别
+ * @param format 写入的日志内容
  * @param ...
  */
 void Log::write_log(int level, const char *format, ...) {
     struct timeval now = {0, 0};
+    //通过gettimeofday()函数获取当前时间
     gettimeofday(&now, NULL);
     time_t t = now.tv_sec;
+    //调用localtime()函数将秒数转换为当前时间的年、月、日、时、分和秒
     struct tm *sys_tm = localtime(&t);
     struct tm my_tm = *sys_tm;
     char s[16] = {0};
+    //根据日志级别，选择对应的日志前缀字符串并保存在字符数组s中
     switch (level) {
         case 0:
             strcpy(s, "[debug]:");
@@ -112,6 +115,7 @@ void Log::write_log(int level, const char *format, ...) {
     m_mutex.lock();
     m_count++;
 
+    //如果当前日志行数达到了最大行数或者日期发生了变化，则重新打开一个新的日志文件
     if (m_today != my_tm.tm_mday || m_count % m_split_lines == 0) //everyday log
     {
 
@@ -145,26 +149,30 @@ void Log::write_log(int level, const char *format, ...) {
                      my_tm.tm_year + 1900, my_tm.tm_mon + 1, my_tm.tm_mday,
                      my_tm.tm_hour, my_tm.tm_min, my_tm.tm_sec, now.tv_usec, s);
 
+    //通过vsnprintf()函数将日志内容格式化成字符串并保存在字符数组m_buf中
     int m = vsnprintf(m_buf + n, m_log_buf_size - 1, format, valst);
     m_buf[n + m] = '\n';
     m_buf[n + m + 1] = '\0';
     log_str = m_buf;
 
     m_mutex.unlock();
-
+    //如果m_is_async为真，并且m_log_queue队列没有满
     if (m_is_async && !m_log_queue->full()) {
+        //将日志字符串压入阻塞队列m_log_queue中
         m_log_queue->push(log_str);
     } else {
+        //直接写入到文件中
         m_mutex.lock();
         fputs(log_str.c_str(), m_fp);
         m_mutex.unlock();
     }
 
+    //使用va_end()函数释放可变参数列表
     va_end(valst);
 }
 
 /**
- * 刷新缓冲区
+ * @brief 刷新缓冲区
  */
 void Log::flush(void) {
     m_mutex.lock();

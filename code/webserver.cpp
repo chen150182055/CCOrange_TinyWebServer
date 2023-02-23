@@ -1,7 +1,7 @@
 #include "webserver.h"
 
 /**
- * 构造函数
+ * @brief 构造函数
  */
 WebServer::WebServer() {
 
@@ -19,7 +19,7 @@ WebServer::WebServer() {
 }
 
 /**
- * 析构函数
+ * @brief 析构函数
  */
 WebServer::~WebServer() {
     close(m_epollfd);
@@ -32,7 +32,7 @@ WebServer::~WebServer() {
 }
 
 /**
- * 初始化
+ * @brief 初始化函数，用来初始化 Web 服务器的一些配置参数和数据库连接池等
  * @param port
  * @param user
  * @param passWord
@@ -61,7 +61,7 @@ void WebServer::init(int port, string user, string passWord, string databaseName
 }
 
 /**
- *
+ * @brief 设置 I/O 多路复用模式，包括 LT 和 ET 两种模式
  */
 void WebServer::trig_mode() {   //触发模式
     //LT + LT
@@ -87,7 +87,7 @@ void WebServer::trig_mode() {   //触发模式
 }
 
 /**
- *
+ * @brief 打开日志文件，用来记录 Web 服务器的运行日志
  */
 void WebServer::log_write() {   //日志
     if (0 == m_close_log) {
@@ -100,7 +100,7 @@ void WebServer::log_write() {   //日志
 }
 
 /**
- *
+ * @brief 创建数据库连接池，用来处理数据库查询请求
  */
 void WebServer::sql_pool() {    //数据库
     //初始化数据库连接池
@@ -112,14 +112,14 @@ void WebServer::sql_pool() {    //数据库
 }
 
 /**
- *
+ * @brief 创建线程池，用来处理客户端请求
  */
 void WebServer::thread_pool() {     //线程池
     m_pool = new threadpool<http_conn>(m_actormodel, m_connPool, m_thread_num);
 }
 
 /**
- *
+ * @brief 创建并监听套接字，等待客户端连接请求
  */
 void WebServer::eventListen() {     //监听
     //网络编程基础步骤
@@ -176,7 +176,7 @@ void WebServer::eventListen() {     //监听
 }
 
 /**
- *
+ * @brief 添加定时器，用来处理客户端连接超时事件
  * @param connfd
  * @param client_address
  */
@@ -197,7 +197,7 @@ void WebServer::timer(int connfd, struct sockaddr_in client_address) {      //
 }
 
 /**
- * 若有数据传输，则将定时器往后延迟3个单位，并对新的定时器在链表上的位置进行调整
+ * @brief 调整定时器，用来更新定时器的超时时间
  * @param timer
  */
 void WebServer::adjust_timer(util_timer *timer) {       //
@@ -209,7 +209,7 @@ void WebServer::adjust_timer(util_timer *timer) {       //
 }
 
 /**
- *
+ * @brief 处理定时器事件，用来关闭超时的客户端连接
  * @param timer
  * @param sockfd
  */
@@ -223,7 +223,7 @@ void WebServer::deal_timer(util_timer *timer, int sockfd) {
 }
 
 /**
- *
+ * @brief 处理客户端数据，包括解析 HTTP 请求和生成 HTTP 响应
  * @return
  */
 bool WebServer::dealclinetdata() {
@@ -261,7 +261,7 @@ bool WebServer::dealclinetdata() {
 }
 
 /**
- *
+ * @brief 处理信号事件，包括定时器信号和终止信号
  * @param timeout
  * @param stop_server
  * @return
@@ -293,7 +293,7 @@ bool WebServer::dealwithsignal(bool &timeout, bool &stop_server) {
 }
 
 /**
- *
+ * @brief 处理读事件，用来读取客户端发送的数据
  * @param sockfd
  */
 void WebServer::dealwithread(int sockfd) {
@@ -336,7 +336,7 @@ void WebServer::dealwithread(int sockfd) {
 }
 
 /**
- *
+ * @brief 处理写事件，用来向客户端发送数据
  * @param sockfd
  */
 void WebServer::dealwithwrite(int sockfd) {
@@ -374,7 +374,7 @@ void WebServer::dealwithwrite(int sockfd) {
 }
 
 /**
- *
+ * @brief 进入事件循环，处理客户端连接请求和定时器事件
  */
 void WebServer::eventLoop() {
     bool timeout = false;

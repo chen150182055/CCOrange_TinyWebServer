@@ -2,7 +2,7 @@
 #include "../http/http_conn.h"
 
 /**
- *
+ * @brief
  */
 sort_timer_lst::sort_timer_lst() {
     head = NULL;
@@ -10,7 +10,7 @@ sort_timer_lst::sort_timer_lst() {
 }
 
 /**
- *
+ * @brief
  */
 sort_timer_lst::~sort_timer_lst() {
     util_timer *tmp = head;
@@ -22,7 +22,7 @@ sort_timer_lst::~sort_timer_lst() {
 }
 
 /**
- *
+ * @brief 将一个定时器加入到定时器链表中，同时调整链表中的顺序
  * @param timer
  */
 void sort_timer_lst::add_timer(util_timer *timer) {
@@ -43,7 +43,10 @@ void sort_timer_lst::add_timer(util_timer *timer) {
 }
 
 /**
- *
+ * @brief 调整指定定时器的位置，这个函数被用于定时器已经发生超时，
+ * 但是在处理定时器超时之前又被修改了超时时间的情况，
+ * 此时需要将定时器从链表中删除，并重新插入链表，
+ * 以保证链表中的所有定时器按照超时时间从小到大排序
  * @param timer
  */
 void sort_timer_lst::adjust_timer(util_timer *timer) {
@@ -67,7 +70,7 @@ void sort_timer_lst::adjust_timer(util_timer *timer) {
 }
 
 /**
- *
+ * @brief 将一个定时器从定时器链表中删除
  * @param timer
  */
 void sort_timer_lst::del_timer(util_timer *timer) {
@@ -98,7 +101,8 @@ void sort_timer_lst::del_timer(util_timer *timer) {
 }
 
 /**
- *
+ * @brief 处理定时任务，它会被定时器处理线程以固定时间间隔调用，
+ * 用于检查定时器链表中所有定时器是否超时
  */
 void sort_timer_lst::tick() {
     if (!head) {
@@ -122,7 +126,7 @@ void sort_timer_lst::tick() {
 }
 
 /**
- *
+ * @brief
  * @param timer
  * @param lst_head
  */
@@ -149,7 +153,7 @@ void sort_timer_lst::add_timer(util_timer *timer, util_timer *lst_head) {
 }
 
 /**
- *
+ * @brief 初始化定时器，并设置最小超时单位
  * @param timeslot
  */
 void Utils::init(int timeslot) {
@@ -157,7 +161,7 @@ void Utils::init(int timeslot) {
 }
 
 /**
- * 对文件描述符设置非阻塞
+ * @brief 将文件描述符设置为非阻塞模式
  * @param fd
  * @return
  */
@@ -169,7 +173,7 @@ int Utils::setnonblocking(int fd) {
 }
 
 /**
- * 将内核事件表注册读事件，ET模式，选择开启EPOLLONESHOT
+ * @brief 将文件描述符加入到epoll事件监听中，并设置EPOLLONESHOT模式
  * @param epollfd
  * @param fd
  * @param one_shot
@@ -192,7 +196,7 @@ void Utils::addfd(int epollfd, int fd, bool one_shot, int TRIGMode) {
 
 
 /**
- * 信号处理函数
+ * @brief 信号处理函数
  * @param sig
  */
 void Utils::sig_handler(int sig) {
@@ -205,7 +209,7 @@ void Utils::sig_handler(int sig) {
 
 
 /**
- * 设置信号函数
+ * @brief 注册信号处理函数
  * @param sig
  * @param handler
  * @param restart
@@ -222,7 +226,7 @@ void Utils::addsig(int sig, void(handler)(int), bool restart) {
 
 
 /**
- * 定时处理任务，重新定时以不断触发SIGALRM信号
+ * @brief 定时处理函数，重新定时以不断触发SIGALRM信号
  */
 void Utils::timer_handler() {
     m_timer_lst.tick();
@@ -230,7 +234,7 @@ void Utils::timer_handler() {
 }
 
 /**
- *
+ * @brief 显示错误信息
  * @param connfd
  * @param info
  */
@@ -245,12 +249,16 @@ int Utils::u_epollfd = 0;
 class Utils;
 
 /**
- *
+ * @brief 回调函数
  * @param user_data
  */
 void cb_func(client_data *user_data) {
+    //通过 epoll_ctl 函数将该定时器所对应的文件描述符从 epoll 实例中删除
     epoll_ctl(Utils::u_epollfd, EPOLL_CTL_DEL, user_data->sockfd, 0);
+    //通过 assert 断言确保该定时器所关联的客户端数据不为空
     assert(user_data);
+    //接着关闭客户端对应的 socket 连接
     close(user_data->sockfd);
+    //将 http_conn::m_user_count 计数器减 1，表示当前连接的客户端数量减少了一个
     http_conn::m_user_count--;
 }

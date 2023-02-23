@@ -58,39 +58,39 @@ public:     //公有成员
 
 public:     //公有成员
     //基础
-    int m_port;     //端口号
-    char *m_root;   //
-    int m_log_write;//
-    int m_close_log;//
-    int m_actormodel;//
+    int m_port;         //Web 服务器的监听端口
+    char *m_root;       //Web 服务器的根目录
+    int m_log_write;    //是否开启日志记录功能
+    int m_close_log;    //是否关闭日志记录功能
+    int m_actormodel;   //I/O 多路复用模式，包括 Reactor 和 Proactor 两种模式
 
-    int m_pipefd[2];//
-    int m_epollfd;  //
-    http_conn *users;//
+    int m_pipefd[2];    //用来处理定时器信号的管道
+    int m_epollfd;      //Epoll 的文件描述符
+    http_conn *users;   //HTTP 连接数组，用来保存所有客户端连接
 
     //数据库相关
-    connection_pool *m_connPool;
-    string m_user;         //登陆数据库用户名
-    string m_passWord;     //登陆数据库密码
-    string m_databaseName; //使用数据库名
-    int m_sql_num;
+    connection_pool *m_connPool;//数据库连接池
+    string m_user;              //数据库用户名
+    string m_passWord;          //数据库密码
+    string m_databaseName;      //数据库名
+    int m_sql_num;              //数据库连接数
 
     //线程池相关
-    threadpool<http_conn> *m_pool;  //
-    int m_thread_num;               //
+    threadpool<http_conn> *m_pool;  //线程池
+    int m_thread_num;               //线程池的线程数
 
     //epoll_event相关
-    epoll_event events[MAX_EVENT_NUMBER];   //
+    epoll_event events[MAX_EVENT_NUMBER];   //Epoll 事件数组，用来保存所有的事件
 
-    int m_listenfd;     //
-    int m_OPT_LINGER;   //
-    int m_TRIGMode;     //
-    int m_LISTENTrigmode;   //
-    int m_CONNTrigmode;     //
+    int m_listenfd;     //监听套接字
+    int m_OPT_LINGER;   //是否启用优雅关闭
+    int m_TRIGMode;     //I/O 多路复用模式
+    int m_LISTENTrigmode;   //监听套接字的 I/O 多路复用模式
+    int m_CONNTrigmode;     //连接套接字的 I/O 多路复用模式
 
     //定时器相关
-    client_data *users_timer;   //
-    Utils utils;                //
+    client_data *users_timer;   //存储所有连接对应的定时器信息
+    Utils utils;                //包含了一些常用的时间处理函数
 };
 
 #endif
