@@ -44,8 +44,9 @@ int main(int argc, char *argv[]) {
     // 这个方法其实在new了一个threadpool线程池对象
     // 线程池类里面有pthread_t*的真正的线程池数组（数目为8），还有list<http_conn *>的双向链表管理所有连接请求的请求队列,请求队列最大10000个http_conn请求，同时带了信号量和锁
     // 依次创建8个线程，每个线程创建后便回调run方法，里面 死循环 监测着http_con0n这个list请求队列，wait信号量(初始0所以直接阻塞)，获取到信号量后lock取http_conn请求，然后unlock，
-    // 然后根据并发模型做不同的事，注意现在都是在工作线程中，默认Proactor：(1)Reactor模型的话，先由工作线程读取IO，读事件则LT读取，然后调用process处理HTTP请求，生成EPOLLOUT事件；写事件则工作线程writev集中写发送
-    // (2)Proactor模型，取出一个数据库链接，调用process处理HTTP请求生成EPOLLOUT。因为主线程已经帮忙读取了IO，所以process分为先来process_read再来process_write \
+    // 然后根据并发模型做不同的事，注意现在都是在工作线程中，默认Proactor：
+    //(1) Reactor模型的话，先由工作线程读取IO，读事件则LT读取，然后调用process处理HTTP请求，生成EPOLLOUT事件；写事件则工作线程writev集中写发送
+    //(2) Proactor模型，取出一个数据库链接，调用process处理HTTP请求生成EPOLLOUT。因为主线程已经帮忙读取了IO，所以process分为先来process_read再来process_write \
     //    process_read根据主从状态机请求行：解析GET,POST, url, 和版本号，只支持HTTP/1.1；请求头：包含Connection,Host,Keep-alive；请求数据：POST的话带了用户名和密码
     //    process_read完成后，调用do_request来写响应。若是POST,则把用户名和密码写入到数据库中；若是GET，则将对应文件内容通过mmap映射到m_file_address中，并返回FILE_REQUEST
     //    process_read完成后，开始调用process_write来写响应，包括响应行，若请求行、请求头和请求数据有格式错误，则404；若文件资源你没权限，则403
@@ -66,11 +67,15 @@ int main(int argc, char *argv[]) {
 
     //运行
     // 主线程是在死循环while(!stop_server){}中，其中调用epoll_wait监听所有的listenfd,connfd和读端管道，最多同时就绪10000个事件
-    // 若是listenfd, 主线程调用dealclinetdata使用accept将connfd取出来，（加入定时升序（按到期时间升序）链表，有一次可读可写事件就会重新调整位置，定时器链表的每个节点包含connfd的地址，connfd和到期时间以及对应的回调函数，这个回调函数就是此定时节点到期时，从epollfd里面删除自己，关闭对应的connfd并且http_conn-1）若m_user_count>65535则打印服务器繁忙日志，不会加入epollfd，继续处理其他就绪事件，利用connfd的值初始化了http_conn *users，并加到内核事件表中，非阻塞LT+EPOLLONESHOT
-    // 若是connfd的可读事件，调用dealwithread，若是Reactor，主线程直接将该socket（connfd对应http_conn* users）对应放入到list<http_conn *>请求队列中，lock,unlock,post唤醒线程，所以thread_pool中的信号量最大可以到达10000
+    // 1.若是listenfd, 主线程调用dealclinetdata使用accept将connfd取出来，（加入定时升序（按到期时间升序）链表，有一次可读可写事件就会重新调整位置，定时器链表的每个节点包含connfd的地址，
+    // connfd和到期时间以及对应的回调函数，这个回调函数就是此定时节点到期时，从epollfd里面删除自己，关闭对应的connfd并且http_conn-1）若m_user_count>65535则打印服务器繁忙日志，
+    // 不会加入epollfd，继续处理其他就绪事件，利用connfd的值初始化了http_conn *users，并加到内核事件表中，非阻塞LT+EPOLLONESHOT
+    //
+    // 2.若是connfd的可读事件，调用dealwithread，若是Reactor，主线程直接将该socket（connfd对应http_conn* users）对应放入到list<http_conn *>请求队列中，lock,unlock,post唤醒线程，
+    // 所以thread_pool中的信号量最大可以到达10000
     //                                       若是Proactor,主线程先读取IO到对应http_conn的内存中，然后再添加到请求队列中
     //                                        但是，当Reactor模式下，请求队列满了10000时，不会将该读事件加入线程池请求队列，等于将该事件先堵在门口，等待后续处理；Proactor只是会先从内核缓冲区读到用户缓冲区，但也不会将事件加入请求队列，相当于后续再一起解析
-    // 若是connfd的可写事件，调用dealwithwrite，若是Reactor，主线程直接将该socket（connfd对应http_conn* users）对应放入请求队列中，lock,unlock,post唤醒线程，右工作线程写
+    // 3.若是connfd的可写事件，调用dealwithwrite，若是Reactor，主线程直接将该socket（connfd对应http_conn* users）对应放入请求队列中，lock,unlock,post唤醒线程，右工作线程写
     //                                       若是Proactor，主线程直接调用write使用writev写出去
     //                                        但是，当Reactor模式下，请求队列满了10000时，不会将该写事件加入线程池请求队列，等于将该事件先堵在门口，等待后续处理；Proactor会直接在主线程中while(1){writev}出去
     server.eventLoop(); //可读事件是recv接收，可写事件是writev发送

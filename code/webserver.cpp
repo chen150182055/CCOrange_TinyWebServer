@@ -182,6 +182,56 @@ void WebServer::eventListen() {     //监听
 }
 
 /**
+ * @brief 进入事件循环，处理客户端连接请求和定时器事件
+ */
+void WebServer::eventLoop() {
+    bool timeout = false;
+    bool stop_server = false;
+
+    while (!stop_server) {
+        int number = epoll_wait(m_epollfd, events, MAX_EVENT_NUMBER, -1);
+        if (number < 0 && errno != EINTR) {
+            LOG_ERROR("%s", "epoll failure");
+            break;
+        }
+
+        for (int i = 0; i < number; i++) {
+            int sockfd = events[i].data.fd;
+
+            //处理新到的客户连接
+            if (sockfd == m_listenfd) {
+                bool flag = dealclinetdata();
+                if (false == flag)
+                    continue;
+            } else if (events[i].events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
+                //服务器端关闭连接，移除对应的定时器
+                util_timer *timer = users_timer[sockfd].timer;
+                deal_timer(timer, sockfd);
+            }
+                //处理信号
+            else if ((sockfd == m_pipefd[0]) && (events[i].events & EPOLLIN)) {
+                bool flag = dealwithsignal(timeout, stop_server);
+                if (false == flag)
+                    LOG_ERROR("%s", "dealclientdata failure");
+            }
+                //处理客户连接上接收到的数据
+            else if (events[i].events & EPOLLIN) {
+                dealwithread(sockfd);
+            } else if (events[i].events & EPOLLOUT) {
+                dealwithwrite(sockfd);
+            }
+        }
+        if (timeout) {
+            utils.timer_handler();
+
+            LOG_INFO("%s", "timer tick");
+
+            timeout = false;
+        }
+    }
+}
+
+/**
  * @brief 添加定时器，用来处理客户端连接超时事件
  * @param connfd
  * @param client_address
@@ -347,7 +397,7 @@ void WebServer::dealwithread(int sockfd) {
  * @brief 处理写事件，用来向客户端发送数据
  * @param sockfd
  */
-void WebServer::    dealwithwrite(int sockfd) {
+void WebServer::dealwithwrite(int sockfd) {
     util_timer *timer = users_timer[sockfd].timer;
     //reactor
     if (1 == m_actormodel) {
@@ -377,56 +427,6 @@ void WebServer::    dealwithwrite(int sockfd) {
             }
         } else {
             deal_timer(timer, sockfd);
-        }
-    }
-}
-
-/**
- * @brief 进入事件循环，处理客户端连接请求和定时器事件
- */
-void WebServer::eventLoop() {
-    bool timeout = false;
-    bool stop_server = false;
-
-    while (!stop_server) {
-        int number = epoll_wait(m_epollfd, events, MAX_EVENT_NUMBER, -1);
-        if (number < 0 && errno != EINTR) {
-            LOG_ERROR("%s", "epoll failure");
-            break;
-        }
-
-        for (int i = 0; i < number; i++) {
-            int sockfd = events[i].data.fd;
-
-            //处理新到的客户连接
-            if (sockfd == m_listenfd) {
-                bool flag = dealclinetdata();
-                if (false == flag)
-                    continue;
-            } else if (events[i].events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
-                //服务器端关闭连接，移除对应的定时器
-                util_timer *timer = users_timer[sockfd].timer;
-                deal_timer(timer, sockfd);
-            }
-                //处理信号
-            else if ((sockfd == m_pipefd[0]) && (events[i].events & EPOLLIN)) {
-                bool flag = dealwithsignal(timeout, stop_server);
-                if (false == flag)
-                    LOG_ERROR("%s", "dealclientdata failure");
-            }
-                //处理客户连接上接收到的数据
-            else if (events[i].events & EPOLLIN) {
-                dealwithread(sockfd);
-            } else if (events[i].events & EPOLLOUT) {
-                dealwithwrite(sockfd);
-            }
-        }
-        if (timeout) {
-            utils.timer_handler();
-
-            LOG_INFO("%s", "timer tick");
-
-            timeout = false;
         }
     }
 }
