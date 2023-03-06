@@ -516,7 +516,8 @@ http_conn::HTTP_CODE http_conn::do_request() {
 }
 
 /**
- * @brief
+ * @brief 对内存映射区执行munmap操作
+ * 取消内存映射
  */
 void http_conn::unmap() {
     if (m_file_address) {

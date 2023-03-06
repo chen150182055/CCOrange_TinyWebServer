@@ -11,7 +11,7 @@
 //类模板的模板参数为 T，表示任务类型
 template<typename T>
 class threadpool {
-public:     //公有成员
+public:
     /*thread_number是线程池中线程的数量，max_requests是请求队列中最多允许的、等待处理的请求的数量*/
     threadpool(int actor_model, connection_pool *connPool, int thread_number = 8, int max_request = 10000);
 
@@ -21,20 +21,20 @@ public:     //公有成员
 
     bool append_p(T *request);
 
-private:    //私有成员
+private:
     /*工作线程运行的函数，它不断从工作队列中取出任务并执行之*/
     static void *worker(void *arg);
 
     void run();
 
-private:    //私有成员
+private:
     int m_thread_number;        //线程池中的线程数
     int m_max_requests;         //请求队列中允许的最大请求数
     pthread_t *m_threads;       //描述线程池的数组，其大小为m_thread_number
     std::list<T *> m_workqueue; //请求队列
     locker m_queuelocker;       //保护请求队列的互斥锁
     sem m_queuestat;            //是否有任务需要处理
-    connection_pool *m_connPool;  //数据库
+    connection_pool *m_connPool;//数据库
     int m_actor_model;          //模型切换
 };
 
@@ -53,18 +53,23 @@ threadpool<T>::threadpool(int actor_model, connection_pool *connPool, int thread
           m_connPool(connPool) {
     if (thread_number <= 0 || max_requests <= 0)
         throw std::exception();
+
     //使用new动态分配了一个大小为thread_number的pthread_t数组，用于存放线程ID
     m_threads = new pthread_t[m_thread_number];
+
     if (!m_threads)
         throw std::exception();
+
     //循环创建thread_number个工作线程
     for (int i = 0; i < thread_number; ++i) {
+
         //具体的，首先使用pthread_create函数创建一个线程，将该线程的ID存储在m_threads数组中
         if (pthread_create(m_threads + i, NULL, worker, this) != 0) {
             //如果创建线程失败，将m_threads数组释放，然后抛出异常
             delete[] m_threads;
             throw std::exception();
         }
+
         //使用pthread_detach函数将该线程设置为分离状态，这样的话，当线程执行结束后，系统会自动回收该线程所占用的资源
         if (pthread_detach(m_threads[i])) {
             delete[] m_threads;
@@ -153,14 +158,17 @@ void *threadpool<T>::worker(void *arg) {
 template<typename T>
 void threadpool<T>::run() {
     while (true) {
+        //消费者
         //1.通过信号量 m_queuestat 来阻塞线程，直到有任务需要处理
-        m_queuestat.wait();
+        m_queuestat.wait(); //sem
         //2.获取工作队列的互斥锁 m_queuelocker，如果工作队列为空，立即释放互斥锁并继续等待信号量
-        m_queuelocker.lock();
+        m_queuelocker.lock();//lock
+
         if (m_workqueue.empty()) {
             m_queuelocker.unlock();
             continue;
         }
+
         //3.从工作队列中取出一个任务 request 并从队列中删除
         T *request = m_workqueue.front();
         m_workqueue.pop_front();
@@ -170,9 +178,9 @@ void threadpool<T>::run() {
         if (!request)
             continue;
         //5.根据 actor_model 的值来确定任务的处理方式
-        if (1 == m_actor_model) {
+        if (1 == m_actor_model) {   //reactor
             //如果是 1，则表示使用 reactor 模式，需要根据任务的状态来确定是读取数据还是写入数据
-            if (0 == request->m_state) {
+            if (0 == request->m_state) {    //读事件
                 if (request->read_once()) {
                     //如果是读取数据，则先进行一次读取，如果读取成功则调用 request->process() 处理请求
                     request->improv = 1;
@@ -184,7 +192,7 @@ void threadpool<T>::run() {
                     request->timer_flag = 1;
                 }
             } else {
-                if (request->write()) {
+                if (request->write()) {     //写事件
                     //如果是写入数据，则进行一次写操作,如果写入成功则将 request->improv 置为 1，表示请求已经被处理
                     request->improv = 1;
                 } else {

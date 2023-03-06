@@ -46,7 +46,8 @@ WebServer::~WebServer() {
  * @param actor_model
  */
 void WebServer::init(int port, string user, string passWord, string databaseName, int log_write,
-                     int opt_linger, int trigmode, int sql_num, int thread_num, int close_log, int actor_model) {   //初始化
+                     int opt_linger, int trigmode, int sql_num, int thread_num, int close_log,
+                     int actor_model) {   //初始化
     m_port = port;  //初始化端口号
     m_user = user;  //初始化用户
     m_passWord = passWord;  //初始化密码
@@ -114,7 +115,8 @@ void WebServer::sql_pool() {    //数据库
 /**
  * @brief 创建线程池，用来处理客户端请求
  */
-void WebServer::thread_pool() {     //线程池
+void WebServer::thread_pool() {
+    //线程池
     m_pool = new threadpool<http_conn>(m_actormodel, m_connPool, m_thread_num);
 }
 
@@ -123,7 +125,8 @@ void WebServer::thread_pool() {     //线程池
  */
 void WebServer::eventListen() {     //监听
     //网络编程基础步骤
-    m_listenfd = socket(PF_INET, SOCK_STREAM, 0);
+    m_listenfd = socket(PF_INET, SOCK_STREAM, 0);   //ipv4和字节流，SOCK_STREAM      DRAGM
+
     assert(m_listenfd >= 0);
 
     //优雅关闭连接
@@ -143,23 +146,26 @@ void WebServer::eventListen() {     //监听
     address.sin_port = htons(m_port);
 
     int flag = 1;
-    setsockopt(m_listenfd, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
-    ret = bind(m_listenfd, (struct sockaddr *) &address, sizeof(address));
+    setsockopt(m_listenfd, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));  //可重用TIME_WAIT状态的TCP连接
+
+    ret = bind(m_listenfd, (struct sockaddr *) &address, sizeof(address));  //命名socket，命名到服务器本机的所有网卡的9006端口
     assert(ret >= 0);
-    ret = listen(m_listenfd, 5);
+
+    ret = listen(m_listenfd, 5);    //创建监听队列，监听，accecpt
     assert(ret >= 0);
 
     utils.init(TIMESLOT);
 
-    //epoll创建内核事件表
+    //epoll创建内核事件表 epoll poll select epoll_create 内核事件表 epoll_wait epoll_ctl
     epoll_event events[MAX_EVENT_NUMBER];
-    m_epollfd = epoll_create(5);
+    m_epollfd = epoll_create(5);    //size 5已经失效
     assert(m_epollfd != -1);
 
     utils.addfd(m_epollfd, m_listenfd, false, m_LISTENTrigmode);
     http_conn::m_epollfd = m_epollfd;
 
-    ret = socketpair(PF_UNIX, SOCK_STREAM, 0, m_pipefd);
+    //建立双向管道来发送信号，将可读可写事件与信号事件统一事件源
+    ret = socketpair(PF_UNIX, SOCK_STREAM, 0, m_pipefd);    //1写0读，将两端都非阻塞LT，然后epollfd监听0读端
     assert(ret != -1);
     utils.setnonblocking(m_pipefd[1]);
     utils.addfd(m_epollfd, m_pipefd[0], false, 0);
@@ -229,7 +235,8 @@ void WebServer::deal_timer(util_timer *timer, int sockfd) {
 bool WebServer::dealclinetdata() {
     struct sockaddr_in client_address;
     socklen_t client_addrlength = sizeof(client_address);
-    if (0 == m_LISTENTrigmode) {
+    if (0 == m_LISTENTrigmode) {    //LT模式
+        //获取到的新客户连接fd
         int connfd = accept(m_listenfd, (struct sockaddr *) &client_address, &client_addrlength);
         if (connfd < 0) {
             LOG_ERROR("%s:errno is:%d", "accept error", errno);
@@ -240,8 +247,9 @@ bool WebServer::dealclinetdata() {
             LOG_ERROR("%s", "Internal server busy");
             return false;
         }
+        //将connfd添加到epollfd中
         timer(connfd, client_address);
-    } else {
+    } else {    //监听socket是ET模式
         while (1) {
             int connfd = accept(m_listenfd, (struct sockaddr *) &client_address, &client_addrlength);
             if (connfd < 0) {
@@ -305,8 +313,8 @@ void WebServer::dealwithread(int sockfd) {
             adjust_timer(timer);
         }
 
-        //若监测到读事件，将该事件放入请求队列
-        m_pool->append(users + sockfd, 0);
+        //若监测到读事件，将该事件放入请求队列    user --> http_conn users[10000];
+        m_pool->append(users + sockfd, 0);  // sockfd 从内核空间读到用户空间，用户肯定要有内存 sockfd http_conn user[sockfd]
 
         while (true) {
             if (1 == users[sockfd].improv) {
@@ -339,7 +347,7 @@ void WebServer::dealwithread(int sockfd) {
  * @brief 处理写事件，用来向客户端发送数据
  * @param sockfd
  */
-void WebServer::dealwithwrite(int sockfd) {
+void WebServer::    dealwithwrite(int sockfd) {
     util_timer *timer = users_timer[sockfd].timer;
     //reactor
     if (1 == m_actormodel) {
