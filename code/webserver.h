@@ -82,9 +82,9 @@ public:     //公有成员
     //epoll_event相关
     epoll_event events[MAX_EVENT_NUMBER];   //Epoll 事件数组，用来保存所有的事件
 
-    int m_listenfd;     //监听套接字
-    int m_OPT_LINGER;   //是否启用优雅关闭
-    int m_TRIGMode;     //I/O 多路复用模式
+    int m_listenfd;         //监听套接字
+    int m_OPT_LINGER;       //是否启用优雅关闭
+    int m_TRIGMode;         //I/O 多路复用模式
     int m_LISTENTrigmode;   //监听套接字的 I/O 多路复用模式
     int m_CONNTrigmode;     //连接套接字的 I/O 多路复用模式
 

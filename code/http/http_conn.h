@@ -73,7 +73,7 @@ public:     //公有成员
         LINE_OPEN       //行数据尚不完整
     };
 
-public:     //私有成员
+public:
     http_conn() {}  //构造函数
 
     ~http_conn() {} //析构函数
@@ -99,7 +99,7 @@ public:     //公有成员
     int improv;
 
 
-private:    //私有成员
+private:
     void init();
 
     HTTP_CODE process_read();
@@ -136,7 +136,7 @@ private:    //私有成员
 
     bool add_blank_line();
 
-public:     //公有成员
+public:
     static int m_epollfd;       //表示当前类所对应的 epollfd 文件描述符
     static int m_user_count;    //表示当前连接的客户数量
     MYSQL *mysql;               //表示 MySQL 数据库连接句柄

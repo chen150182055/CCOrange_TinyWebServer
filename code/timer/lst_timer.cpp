@@ -22,8 +22,8 @@ sort_timer_lst::~sort_timer_lst() {
 }
 
 /**
- * @brief 将一个定时器加入到定时器链表中，同时调整链表中的顺序
- * @param timer
+ * @brief 将一个计时器添加到已排序的计时器链表中，并保持链表的顺序
+ * @param timer 指向计时器对象的指针，表示要添加的计时器
  */
 void sort_timer_lst::add_timer(util_timer *timer) {
     if (!timer) {
@@ -126,9 +126,9 @@ void sort_timer_lst::tick() {
 }
 
 /**
- * @brief
- * @param timer
- * @param lst_head
+ * @brief 将一个定时器插入到定时器链表中，保证链表中所有定时器按照其过期时间的先后顺序排列
+ * @param timer 指向要添加的定时器的指针
+ * @param lst_head 指向定时器链表头结点的指针
  */
 void sort_timer_lst::add_timer(util_timer *timer, util_timer *lst_head) {
     util_timer *prev = lst_head;

@@ -7,13 +7,14 @@ WebServer::WebServer() {
 
     users = new http_conn[MAX_FD];  //http_conn类对象
 
-    char server_path[200];  //root文件夹路径
-    chdir("../");   //改变当前工作路径
+    char server_path[200];      //root文件夹路径
+    chdir("../");               //改变当前工作路径
     getcwd(server_path, 200);   //获取当前工作路径,将值存放在server_path中,200为空间大小
     char root[20] = "/staticResources";
-    m_root = (char *) malloc(strlen(server_path) + strlen(root) + 1);  //计算server_path和root的长度和
-    strcpy(m_root, server_path);    //将server_path复制到m_root
-    strcat(m_root, root);           //将root复制到m_root
+    //计算server_path和root的长度和
+    m_root = (char *) malloc(strlen(server_path) + strlen(root) + 1);
+    strcpy(m_root, server_path);//将server_path复制到m_root
+    strcat(m_root, root);       //将root复制到m_root
 
     users_timer = new client_data[MAX_FD];  //定时器
 }
@@ -22,65 +23,68 @@ WebServer::WebServer() {
  * @brief 析构函数
  */
 WebServer::~WebServer() {
-    close(m_epollfd);
-    close(m_listenfd);
-    close(m_pipefd[1]);
-    close(m_pipefd[0]);
-    delete[] users;
-    delete[] users_timer;
-    delete m_pool;
+    close(m_epollfd);   //关闭 epoll 文件描述符
+    close(m_listenfd);  //停止监听套接字
+    close(m_pipefd[1]); //关闭管道文件描述符
+    close(m_pipefd[0]); //关闭管道文件描述符
+    delete[] users;     //释放 http_conn 类对象数组
+    delete[] users_timer;//释放定时器
+    delete m_pool;      //释放线程池
 }
 
 /**
  * @brief 初始化函数，用来初始化 Web 服务器的一些配置参数和数据库连接池等
- * @param port
- * @param user
- * @param passWord
- * @param databaseName
- * @param log_write
- * @param opt_linger
- * @param trigmode
- * @param sql_num
- * @param thread_num
- * @param close_log
- * @param actor_model
+ * @param port 端口号
+ * @param user 用户名
+ * @param passWord 密码
+ * @param databaseName 数据库名称
+ * @param log_write 日志写入
+ * @param opt_linger 选项延迟
+ * @param trigmode 触发模式
+ * @param sql_num 数据库数量
+ * @param thread_num 线程数量
+ * @param close_log 关闭日志
+ * @param actor_model actor模型
  */
 void WebServer::init(int port, string user, string passWord, string databaseName, int log_write,
                      int opt_linger, int trigmode, int sql_num, int thread_num, int close_log,
-                     int actor_model) {   //初始化
-    m_port = port;  //初始化端口号
-    m_user = user;  //初始化用户
-    m_passWord = passWord;  //初始化密码
+                     int actor_model) {
+    m_port = port;                  //初始化端口号
+    m_user = user;                  //初始化用户
+    m_passWord = passWord;          //初始化密码
     m_databaseName = databaseName;  //初始化数据库名称
     m_sql_num = sql_num;            //初始化数据库数量
-    m_thread_num = thread_num;      //初始化线程池
-    m_log_write = log_write;        //初始化日志
-    m_OPT_LINGER = opt_linger;      //初始化
+    m_thread_num = thread_num;      //初始化线程数量
+    m_log_write = log_write;        //初始化日志写入方式
+    m_OPT_LINGER = opt_linger;      //初始化选项延迟
     m_TRIGMode = trigmode;          //初始化触发模式
-    m_close_log = close_log;        //初始化
-    m_actormodel = actor_model;     //初始化
+    m_close_log = close_log;        //初始化关闭日志
+    m_actormodel = actor_model;     //初始化事件模型
 }
 
 /**
- * @brief 设置 I/O 多路复用模式，包括 LT 和 ET 两种模式
+ * @brief 将服务器的触发模式从整数值转换为实际的LT和ET模式
+ * 边缘触发（ET）和水平触发（LT）。
+ * 边缘触发模式会在数据有变化时才会触发事件，
+ * 而水平触发模式则会在数据仍然可读或可写时不断触发事件
  */
 void WebServer::trig_mode() {   //触发模式
-    //LT + LT
+    //如果 m_TRIGMode 的值为0，则表示使用LT+LT模式
     if (0 == m_TRIGMode) {
         m_LISTENTrigmode = 0;
         m_CONNTrigmode = 0;
     }
-        //LT + ET
+        //如果 m_TRIGMode 的值为1，则表示使用LT+ET模式
     else if (1 == m_TRIGMode) {
         m_LISTENTrigmode = 0;
         m_CONNTrigmode = 1;
     }
-        //ET + LT
+        //如果 m_TRIGMode 的值为2，则表示使用ET+LT模式
     else if (2 == m_TRIGMode) {
         m_LISTENTrigmode = 1;
         m_CONNTrigmode = 0;
     }
-        //ET + ET
+        //如果 m_TRIGMode 的值为3，则表示使用ET+ET模式
     else if (3 == m_TRIGMode) {
         m_LISTENTrigmode = 1;
         m_CONNTrigmode = 1;
@@ -125,11 +129,13 @@ void WebServer::thread_pool() {
  */
 void WebServer::eventListen() {     //监听
     //网络编程基础步骤
+
+    //1.创建套接字
     m_listenfd = socket(PF_INET, SOCK_STREAM, 0);   //ipv4和字节流，SOCK_STREAM      DRAGM
 
     assert(m_listenfd >= 0);
 
-    //优雅关闭连接
+    //2.优雅关闭连接
     if (0 == m_OPT_LINGER) {
         struct linger tmp = {0, 1};
         setsockopt(m_listenfd, SOL_SOCKET, SO_LINGER, &tmp, sizeof(tmp));
@@ -148,23 +154,28 @@ void WebServer::eventListen() {     //监听
     int flag = 1;
     setsockopt(m_listenfd, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));  //可重用TIME_WAIT状态的TCP连接
 
+    //3.绑定地址，将套接字绑定到地址和端口上
     ret = bind(m_listenfd, (struct sockaddr *) &address, sizeof(address));  //命名socket，命名到服务器本机的所有网卡的9006端口
     assert(ret >= 0);
 
+    //4.监听套接字
     ret = listen(m_listenfd, 5);    //创建监听队列，监听，accecpt
     assert(ret >= 0);
 
+    //5.初始化定时器
     utils.init(TIMESLOT);
 
-    //epoll创建内核事件表 epoll poll select epoll_create 内核事件表 epoll_wait epoll_ctl
+    //6.epoll创建内核事件表 epoll poll select epoll_create 内核事件表 epoll_wait epoll_ctl
     epoll_event events[MAX_EVENT_NUMBER];
     m_epollfd = epoll_create(5);    //size 5已经失效
     assert(m_epollfd != -1);
 
+    //7.添加监听套接字到事件表，这里将第三个参数设置为 false，表示使用 LT 模式，将第四个参数设置为 m_LISTENTrigmode，表示触发模式
     utils.addfd(m_epollfd, m_listenfd, false, m_LISTENTrigmode);
+    //8.将 HTTP 连接的 epoll 事件表设置为 m_epollfd
     http_conn::m_epollfd = m_epollfd;
 
-    //建立双向管道来发送信号，将可读可写事件与信号事件统一事件源
+    //9.建立双向管道来发送信号，将可读可写事件与信号事件统一事件源
     ret = socketpair(PF_UNIX, SOCK_STREAM, 0, m_pipefd);    //1写0读，将两端都非阻塞LT，然后epollfd监听0读端
     assert(ret != -1);
     utils.setnonblocking(m_pipefd[1]);
@@ -189,43 +200,50 @@ void WebServer::eventLoop() {
     bool stop_server = false;
 
     while (!stop_server) {
+        //使用 epoll_wait() 函数来等待事件的发生
         int number = epoll_wait(m_epollfd, events, MAX_EVENT_NUMBER, -1);
         if (number < 0 && errno != EINTR) {
             LOG_ERROR("%s", "epoll failure");
             break;
         }
 
+        //遍历所有就绪事件，处理事件
         for (int i = 0; i < number; i++) {
             int sockfd = events[i].data.fd;
 
-            //处理新到的客户连接
+            //1.表示有新的客户端连接请求，调用 dealclinetdata() 函数来处理连接请求
             if (sockfd == m_listenfd) {
                 bool flag = dealclinetdata();
                 if (false == flag)
                     continue;
-            } else if (events[i].events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
+            }
+            //2.表示客户端连接已经断开，移除对应的定时器，并清理相应的资源
+            else if (events[i].events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
                 //服务器端关闭连接，移除对应的定时器
                 util_timer *timer = users_timer[sockfd].timer;
                 deal_timer(timer, sockfd);
             }
-                //处理信号
+            //3.表示收到了一个信号，调用 dealwithsignal() 函数来处理信号
             else if ((sockfd == m_pipefd[0]) && (events[i].events & EPOLLIN)) {
                 bool flag = dealwithsignal(timeout, stop_server);
                 if (false == flag)
                     LOG_ERROR("%s", "dealclientdata failure");
             }
-                //处理客户连接上接收到的数据
+            //4.表示客户端有数据到来，调用 dealwithread() 函数来处理客户端请求
             else if (events[i].events & EPOLLIN) {
                 dealwithread(sockfd);
-            } else if (events[i].events & EPOLLOUT) {
+            }
+            //5.表示服务器端可以向客户端发送数据，调用 dealwithwrite() 函数来发送数据
+            else if (events[i].events & EPOLLOUT) {
                 dealwithwrite(sockfd);
             }
         }
         if (timeout) {
+            //当 timeout 标志位为 true 时，说明定时器事件已经触发，调用 timer_handler() 函数来处理定时器事件
             utils.timer_handler();
 
             LOG_INFO("%s", "timer tick");
-
+            //将 timeout 标志位设置为 false，表示定时器事件已经处理完毕
             timeout = false;
         }
     }
@@ -236,7 +254,7 @@ void WebServer::eventLoop() {
  * @param connfd
  * @param client_address
  */
-void WebServer::timer(int connfd, struct sockaddr_in client_address) {      //
+void WebServer::timer(int connfd, struct sockaddr_in client_address) {
     users[connfd].init(connfd, client_address, m_root, m_CONNTrigmode, m_close_log, m_user, m_passWord, m_databaseName);
 
     //初始化client_data数据
@@ -256,7 +274,7 @@ void WebServer::timer(int connfd, struct sockaddr_in client_address) {      //
  * @brief 调整定时器，用来更新定时器的超时时间
  * @param timer
  */
-void WebServer::adjust_timer(util_timer *timer) {       //
+void WebServer::adjust_timer(util_timer *timer) {
     time_t cur = time(NULL);
     timer->expire = cur + 3 * TIMESLOT;
     utils.m_timer_lst.adjust_timer(timer);

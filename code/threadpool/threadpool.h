@@ -170,8 +170,8 @@ void threadpool<T>::run() {
         }
 
         //3.从工作队列中取出一个任务 request 并从队列中删除
-        T *request = m_workqueue.front();
-        m_workqueue.pop_front();
+        T *request = m_workqueue.front(); //返回容器中的第一个元素
+        m_workqueue.pop_front();          //删除容器中的第一个元素
 
         //4.释放工作队列的互斥锁
         m_queuelocker.unlock();

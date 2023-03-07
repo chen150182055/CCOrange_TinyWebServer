@@ -27,23 +27,26 @@ Log::~Log() {
 //异步需要设置阻塞队列的长度，同步不需要设置
 /**
  * @brief 初始化
- * @param file_name
- * @param close_log
- * @param log_buf_size
- * @param split_lines
- * @param max_queue_size
+ * @param file_name 日志文件的路径和名称
+ * @param close_log 在析构函数中是否关闭日志文件
+ * @param log_buf_size 表示日志缓冲区的大小
+ * @param split_lines 表示按行分割日志文件的行数
+ * @param max_queue_size 表示异步写入日志时阻塞队列的大小
  * @return
  */
 bool Log::init(const char *file_name, int close_log, int log_buf_size, int split_lines, int max_queue_size) {
-    //如果设置了max_queue_size,则设置为异步
+    //如果max_queue_size大于等于1，则表示需要异步写入日志
     if (max_queue_size >= 1) {
         m_is_async = true;
+        //创建一个阻塞队列m_log_queue，用于保存异步写入的日志信息
         m_log_queue = new block_queue<string>(max_queue_size);
         pthread_t tid;
         //flush_log_thread为回调函数,这里表示创建线程异步写日志
+        //创建一个新线程flush_log_thread，该线程的作用是异步将日志信息写入磁盘文件
         pthread_create(&tid, NULL, flush_log_thread, NULL);
     }
 
+    //将其余的输入参数赋值给对应的成员变量
     m_close_log = close_log;
     m_log_buf_size = log_buf_size;
     m_buf = new char[m_log_buf_size];

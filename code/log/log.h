@@ -24,12 +24,14 @@ public:     //公有成员
     }
 
     /**
-     * @brief
+     * @brief 静态函数，周期性地将日志队列中的消息写入日志文件中
      * @param args
      * @return
      */
     static void *flush_log_thread(void *args) {
+        //async_write_log()函数是用于异步写入日志的函数，它会将日志消息添加到队列中，并将队列中的日志消息逐一写入日志文件中
         Log::get_instance()->async_write_log();
+        //样，当多个线程同时写入日志时，它们不会阻塞彼此，而是将日志消息添加到队列中等待被写入文件
     }
 
     bool init(const char *file_name, int close_log, int log_buf_size = 8192, int split_lines = 5000000,int max_queue_size = 0);
@@ -38,10 +40,10 @@ public:     //公有成员
 
     void flush(void);
 
-private:    //私有成员
-    Log();  //构造函数声明
+private:
+    Log();
 
-    virtual ~Log(); //析构函数声明
+    virtual ~Log();
 
     /**
      * @brief 步写日志，通过阻塞队列实现
@@ -57,7 +59,7 @@ private:    //私有成员
         }
     }
 
-private:    //私有成员
+private:
     char dir_name[128]; //路径名
     char log_name[128]; //log文件名
     int m_split_lines;  //日志最大行数
@@ -68,8 +70,8 @@ private:    //私有成员
     char *m_buf;
     block_queue<string> *m_log_queue; //阻塞队列
     bool m_is_async;                  //是否同步标志位
-    locker m_mutex;
-    int m_close_log; //关闭日志
+    locker m_mutex;                   //互斥锁
+    int m_close_log;                  //关闭日志
 };
 
 #define LOG_DEBUG(format, ...) if(0 == m_close_log) {Log::get_instance()->write_log(0, format, ##__VA_ARGS__); Log::get_instance()->flush();}

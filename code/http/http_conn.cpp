@@ -18,7 +18,7 @@ locker m_lock;
 map <string, string> users;
 
 /**
- * @brief
+ * @brief 从MySQL数据库中查询用户名和密码
  * @param connPool
  */
 void http_conn::initmysql_result(connection_pool *connPool) {
@@ -397,7 +397,7 @@ http_conn::HTTP_CODE http_conn::process_read() {
 }
 
 /**
- * @brief 基于HTTP协议的服务器中的处理请求的函数
+ * @brief 基于HTTP协议的服务器中的处理请求的函数(主要的HTML业务逻辑处理函数)
  * @return
  */
 http_conn::HTTP_CODE http_conn::do_request() {
@@ -527,14 +527,15 @@ void http_conn::unmap() {
 }
 
 /**
- * @brief
+ * @brief 用于向客户端发送响应报文
  * @return
  */
 bool http_conn::write() {
     int temp = 0;
-
+    //1.判断是否已经发送完所有数据
     if (bytes_to_send == 0) {
         modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
+        //是则调用init()函数重新初始化对象并修改文件描述符的状态为EPOLLIN，然后返回true
         init();
         return true;
     }
@@ -562,10 +563,13 @@ bool http_conn::write() {
             m_iv[0].iov_len = m_iv[0].iov_len - bytes_have_send;
         }
 
+        //判断是否已经发送完所有数据
         if (bytes_to_send <= 0) {
+            //是则调用unmap()函数关闭文件映射
             unmap();
             modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
 
+            //根据m_linger判断是否需要保持连接
             if (m_linger) {
                 init();
                 return true;
@@ -613,18 +617,19 @@ bool http_conn::add_status_line(int status, const char *title) {
 }
 
 /**
- * @brief
- * @param content_len
+ * @brief 添加HTTP响应头信息的功能
+ * @param content_len HTTP响应正文的长度
  * @return
  */
 bool http_conn::add_headers(int content_len) {
-    return add_content_length(content_len) && add_linger() &&
-           add_blank_line();
+    //分别用于添加HTTP响应头信息中的Content-Length、Connection和空行
+    //最后通过逻辑与运算符将三个函数的返回值合并为一个布尔类型的值并返回
+    return add_content_length(content_len) && add_linger() && add_blank_line();
 }
 
 /**
- * @brief
- * @param content_len
+ * @brief 向HTTP响应报文中添加Content-Length头部字段，表示响应正文的长度
+ * @param content_len 响应正文的长度
  * @return
  */
 bool http_conn::add_content_length(int content_len) {
@@ -632,7 +637,7 @@ bool http_conn::add_content_length(int content_len) {
 }
 
 /**
- * @brief
+ * @brief 添加 HTTP 响应头的 Content-Type 字段，表示响应的内容类型
  * @return
  */
 bool http_conn::add_content_type() {
@@ -640,7 +645,7 @@ bool http_conn::add_content_type() {
 }
 
 /**
- * @brief
+ * @brief 向HTTP响应头中添加Connection字段
  * @return
  */
 bool http_conn::add_linger() {
@@ -648,15 +653,16 @@ bool http_conn::add_linger() {
 }
 
 /**
- * @brief
+ * @brief 在 HTTP 响应报文中添加一个空行，表示响应头部分结束
  * @return
  */
 bool http_conn::add_blank_line() {
+    //其中 "\r\n" 表示一个回车符和一个换行符，即 HTTP 报文中的换行符
     return add_response("%s", "\r\n");
 }
 
 /**
- * @brief
+ * @brief 向HTTP响应报文的正文中添加数据
  * @param content
  * @return
  */
@@ -665,13 +671,14 @@ bool http_conn::add_content(const char *content) {
 }
 
 /**
- * @brief 根据传入的HTTP_CODE类型参数ret，填充响应报文，准备发送给客户端
- * @param ret
+ * @brief 在处理写事件时，根据不同的HTTP_CODE类型填充响应报文
+ * @param ret HTTP_CODE类型的枚举值
  * @return
  */
 bool http_conn::process_write(HTTP_CODE ret) {
     //通过switch语句根据不同的HTTP_CODE类型进行响应报文的填充
     switch (ret) {
+        //当ret为INTERNAL_ERROR时
         case INTERNAL_ERROR: {
             add_status_line(500, error_500_title);
             add_headers(strlen(error_500_form));
@@ -696,6 +703,7 @@ bool http_conn::process_write(HTTP_CODE ret) {
                 return false;
             break;
         }
+        //当ret为FILE_REQUEST时
         case FILE_REQUEST: {
             add_status_line(200, ok_200_title);
             if (m_file_stat.st_size != 0) {
@@ -717,9 +725,11 @@ bool http_conn::process_write(HTTP_CODE ret) {
         default:
             return false;
     }
+    //m_iv用于存放缓冲区内容
     m_iv[0].iov_base = m_write_buf;
     m_iv[0].iov_len = m_write_idx;
     m_iv_count = 1;
+    //bytes_to_send表示需要发送的字节数
     bytes_to_send = m_write_idx;
     return true;
 }
